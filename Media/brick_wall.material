@@ -1,0 +1,19 @@
+material brick_wall
+{
+	technique
+	{
+		pass
+		{
+			lighting on
+			ambient 0.0 0.0 0.0
+			diffuse 0.8 0.8 0.8 1.0
+			specular 1.0 1.0 1.0 1.0 64.0
+			emissive 0.0 0.0 0.0 1.0
+			texture_unit
+			{
+				texture brick-wall-texture.jpg 2d
+				tex_coord_set 0
+			}
+		}
+	}
+}
