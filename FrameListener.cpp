@@ -1,9 +1,21 @@
+#include <math.h>
+
+#include <boost/shared_ptr.hpp>
+
+#include <Ogre.h>
+#include <OgreStringConverter.h>
+#include <OgreException.h>
+
+#define OIS_DYNAMIC_LIB
+#include <OIS/OIS.h>
+
+#include "Camera.hpp"
 #include "FrameListener.hpp"
 
 namespace Game3D {
 
-	FrameListener::FrameListener(Ogre::RenderWindow* window, Ogre::Camera* camera, Ogre::SceneManager* sceneManager) :
-		camera_(camera), sceneManager_(sceneManager),
+	FrameListener::FrameListener(Ogre::RenderWindow* window, const boost::shared_ptr<Camera>& camera, Ogre::SceneManager* sceneManager) :
+		sceneManager_(sceneManager), camera_(camera),
 		translateVector_(Ogre::Vector3::ZERO), currentSpeed_(0), window_(window),
 		moveScale_(0.0f), rotateScale_(0.0f),
 		moveSpeed_(200), rotateSpeed_(36),
@@ -28,16 +40,6 @@ namespace Game3D {
 		windowResized(window_);
 		
 		Ogre::WindowEventUtilities::addWindowEventListener(window_, this);
-		
-		cameraNode_ = sceneManager_->getRootSceneNode()->createChildSceneNode();
-		cameraNode_->setPosition(50, 50, 50);
-		
-		cameraYawNode_ = cameraNode_->createChildSceneNode();
-		
-		cameraPitchNode_ = cameraYawNode_->createChildSceneNode();
-		
-		cameraRollNode_ = cameraPitchNode_->createChildSceneNode();
-		cameraRollNode_->attachObject(camera_);
 	}
 	
 	FrameListener::~FrameListener() {
@@ -72,19 +74,19 @@ namespace Game3D {
 	
 	bool FrameListener::processUnbufferedKeyInput(const Ogre::FrameEvent& evt) {
 		if(keyboard_->isKeyDown(OIS::KC_W)) {
-			translateVector_.z = -(moveScale_);
+			translateVector_.z = moveScale_;
 		}
 		
 		if(keyboard_->isKeyDown(OIS::KC_S)) {
-			translateVector_.z = moveScale_ * 0.25;
+			translateVector_.z = -(moveScale_ * 0.25);
 		}
 		
 		if(keyboard_->isKeyDown(OIS::KC_A)) {
-			translateVector_.x = -(moveScale_ * 0.5);
+			translateVector_.x = moveScale_ * 0.5;
 		}
 		
 		if(keyboard_->isKeyDown(OIS::KC_D)) {
-			translateVector_.x = moveScale_ * 0.5;
+			translateVector_.x = -(moveScale_ * 0.5);
 		}
 		
 		if(keyboard_->isKeyDown(OIS::KC_ESCAPE) || keyboard_->isKeyDown(OIS::KC_Q)) {
@@ -104,28 +106,23 @@ namespace Game3D {
 	}
 	
 	void FrameListener::moveCamera() {
-		cameraYawNode_->yaw(rotX_);
+		camera_->rotate(AngleVector(-rotY_.valueDegrees(), rotX_.valueDegrees(), 0.0));
 		
-		cameraPitchNode_->pitch(rotY_);
+		camera_->translate(camera_->getOrientation().yawOrientation * translateVector_);
 		
-		cameraNode_->translate(cameraYawNode_->getOrientation() *
-		                       translateVector_,
-		                       Ogre::SceneNode::TS_LOCAL);
-		                       
-		// Angle of rotation around the X-axis.
-		const Ogre::Real pitchAngle = (2 * Ogre::Degree(Ogre::Math::ACos(cameraPitchNode_->getOrientation().w)).valueDegrees());
+		const double maxPitch = 60.0;
 		
-		// Determines the sign of the angle.
-		const Ogre::Real pitchAngleSign = cameraPitchNode_->getOrientation().x;
-		
-		const double maxAngle = 60.0;
+		AngleVector rotation = camera_->getRotation();
+		const double pitch = rotation.pitch;
 		
 		// Limit the pitch.
-		if(pitchAngle > maxAngle) {
-			if(pitchAngleSign > 0) {
-				cameraPitchNode_->setOrientation(Ogre::Quaternion(Ogre::Degree(maxAngle), Ogre::Vector3::UNIT_X));
-			} else if(pitchAngleSign < 0) {
-				cameraPitchNode_->setOrientation(Ogre::Quaternion(Ogre::Degree(-maxAngle), Ogre::Vector3::UNIT_X));
+		if(fabs(pitch) > maxPitch) {
+			if(pitch > 0.0) {
+				rotation.pitch = maxPitch;
+				camera_->setRotation(rotation);
+			} else {
+				rotation.pitch = -maxPitch;
+				camera_->setRotation(rotation);
 			}
 		}
 	}
@@ -180,6 +177,9 @@ namespace Game3D {
 		if(!mouse_->buffered() || !keyboard_->buffered()) {
 			moveCamera();
 		}
+		
+		// Advance the animation.
+		sceneManager_->getEntity("thing")->getAnimationState("my_animation")->addTime(evt.timeSinceLastFrame);
 		
 		return true;
 	}

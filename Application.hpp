@@ -19,19 +19,11 @@ namespace Game3D {
 			
 			void createScene();
 			
-			void destroyScene();
-			
-			void setupResources();
-			
-			void createResourceListener();
-			
 		private:
-			Ogre::Root* mRoot;
-			Ogre::Camera* mCamera;
-			Ogre::SceneManager* mSceneMgr;
-			FrameListener* mFrameListener;
-			Ogre::RenderWindow* mWindow;
-			Ogre::String mResourcePath;
+			Ogre::Root* root_;
+			Ogre::SceneManager* sceneManager_;
+			FrameListener* frameListener_;
+			Ogre::RenderWindow* window_;
 			
 	};
 	

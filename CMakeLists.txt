@@ -30,6 +30,6 @@ set(CMAKE_CXX_FLAGS "-g -Wall")
 
 include_directories(${OIS_INCLUDE_DIRS} ${OGRE_INCLUDE_DIRS})
 
-add_executable(game3D main.cpp Application.cpp FrameListener.cpp Resources.cpp)
-target_link_libraries(game3D ${OGRE_LIBRARIES} ${OIS_LIBRARIES} boost_filesystem boost_regex boost_thread-mt boost_system-mt)
+add_executable(game3D main.cpp Application.cpp Camera.cpp FrameListener.cpp Resources.cpp)
+target_link_libraries(game3D ${OGRE_LIBRARIES} ${OIS_LIBRARIES} boost_filesystem boost_regex boost_thread boost_system)
 

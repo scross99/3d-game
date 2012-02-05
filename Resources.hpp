@@ -5,7 +5,11 @@
 
 namespace Game3D {
 
+	std::string macBundlePath();
+
 	std::string getResourcePath();
+	
+	void loadResources();
 	
 }
 

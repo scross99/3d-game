@@ -5,12 +5,14 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 
 #include <Ogre.h>
 #include <OgreConfigFile.h>
 
 #include "Application.hpp"
+#include "Camera.hpp"
 #include "FrameListener.hpp"
 #include "Resources.hpp"
 
@@ -83,18 +85,19 @@ namespace Game3D {
 	}
 	
 	Application::Application() {
-		mFrameListener = 0;
-		mRoot = 0;
-		mResourcePath = getResourcePath();
+		frameListener_ = 0;
+		
+		root_ = OGRE_NEW Ogre::Root(getResourcePath() + "plugins.cfg",
+		                            getResourcePath() + "ogre.cfg", getResourcePath() + "Ogre.log");
 	}
 	
 	Application::~Application() {
-		if(mFrameListener) {
-			delete mFrameListener;
+		if(frameListener_) {
+			delete frameListener_;
 		}
 		
-		if(mRoot) {
-			OGRE_DELETE mRoot;
+		if(root_) {
+			OGRE_DELETE root_;
 		}
 	}
 	
@@ -109,64 +112,47 @@ namespace Game3D {
 			// Pump window events.
 			Ogre::WindowEventUtilities::messagePump();
 			
-			if(!mRoot->renderOneFrame()) {
+			if(!root_->renderOneFrame()) {
 				break;
 			}
 			
 			// Sleep to let the CPU relax.
 			boost::this_thread::sleep(boost::posix_time::milliseconds(1000.0 / MaxFPS));
 		}
-		
-		destroyScene();
 	}
 	
 	bool Application::setup() {
-	
-		Ogre::String pluginsPath;
-		// only use plugins.cfg if not static
-#ifndef OGRE_STATIC_LIB
-		pluginsPath = mResourcePath + "plugins.cfg";
-#endif
-		
-		mRoot = OGRE_NEW Ogre::Root(pluginsPath,
-		                            mResourcePath + "ogre.cfg", mResourcePath + "Ogre.log");
-		                            
-		setupResources();
-		
-		if(!mRoot->showConfigDialog()) {
+		if(!root_->showConfigDialog()) {
 			return false;
 		}
 		
-		mWindow = mRoot->initialise(true);
+		window_ = root_->initialise(true);
 		
-		mSceneMgr = mRoot->createSceneManager(Ogre::ST_EXTERIOR_CLOSE);
+		sceneManager_ = root_->createSceneManager(Ogre::ST_EXTERIOR_CLOSE);
 		
-		mCamera = mSceneMgr->createCamera("camera");
-		
-		mCamera->lookAt(Ogre::Vector3(0, 0, -1));
-		mCamera->setNearClipDistance(2);
-		
-		Ogre::Viewport* vp = mWindow->addViewport(mCamera);
-		vp->setBackgroundColour(Ogre::ColourValue(0, 0, 0));
-		
-		mCamera->setAspectRatio((vp->getActualWidth() == 3840.0 ? 1920.0 : vp->getActualWidth()) / vp->getActualHeight());
-		
-		// Set default mipmap level (NB some APIs ignore this)
+		// Set default mipmap level.
 		Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
 		
-		// Create any resource listeners (for loading screens)
-		createResourceListener();
+		Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering(Ogre::TFO_ANISOTROPIC);
+		Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(8);
 		
-		Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
+		CameraInfo cameraInfo;
+		cameraInfo.name = "camera";
+		cameraInfo.nearClipDistance = 2.0;
+		cameraInfo.initialPosition = Vector(50.0, 50.0, 50.0);
+		
+		boost::shared_ptr<Camera> camera(new Camera(cameraInfo, sceneManager_));
+		
+		Ogre::Viewport* vp = window_->addViewport(camera->getCamera());
+		vp->setBackgroundColour(Ogre::ColourValue(0, 0, 0));
+		
+		camera->setAspectRatio((vp->getActualWidth() == 3840.0 ? 1920.0 : vp->getActualWidth()) / vp->getActualHeight());
 		
 		// Create the scene
 		createScene();
 		
-		mFrameListener = new FrameListener(mWindow, mCamera, mSceneMgr);
-		mRoot->addFrameListener(mFrameListener);
-		
-		Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering(Ogre::TFO_ANISOTROPIC);
-		Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(8);
+		frameListener_ = new FrameListener(window_, camera, sceneManager_);
+		root_->addFrameListener(frameListener_);
 		
 		return true;
 		
@@ -174,7 +160,7 @@ namespace Game3D {
 	
 	void Application::createScene() {
 		{
-			Ogre::ManualObject* manual = mSceneMgr->createManualObject();
+			Ogre::ManualObject* manual = sceneManager_->createManualObject();
 			
 			manual->setDynamic(false);
 			
@@ -207,7 +193,7 @@ namespace Game3D {
 		}
 		
 		{
-			Ogre::ManualObject* manual = mSceneMgr->createManualObject();
+			Ogre::ManualObject* manual = sceneManager_->createManualObject();
 			
 			manual->setDynamic(false);
 			
@@ -239,11 +225,11 @@ namespace Game3D {
 			manual->convertToMesh("floor");
 		}
 		
-		mSceneMgr->setAmbientLight(Ogre::ColourValue(0, 0, 0));
-		mSceneMgr->setShadowTechnique(Ogre::SHADOWTYPE_STENCIL_ADDITIVE);
+		sceneManager_->setAmbientLight(Ogre::ColourValue(0, 0, 0));
+		sceneManager_->setShadowTechnique(Ogre::SHADOWTYPE_STENCIL_ADDITIVE);
 		
 		{
-			Ogre::Light* pointLight = mSceneMgr->createLight();
+			Ogre::Light* pointLight = sceneManager_->createLight();
 			pointLight->setType(Ogre::Light::LT_POINT);
 			pointLight->setPosition(Ogre::Vector3(200.0, 100.0, 200.0));
 			pointLight->setDiffuseColour(0.8, 0.8, 0.8);
@@ -251,7 +237,7 @@ namespace Game3D {
 		}
 		
 		{
-			Ogre::Light* pointLight = mSceneMgr->createLight();
+			Ogre::Light* pointLight = sceneManager_->createLight();
 			pointLight->setType(Ogre::Light::LT_POINT);
 			pointLight->setPosition(Ogre::Vector3(-200.0, 100.0, -200.0));
 			pointLight->setDiffuseColour(0.8, 0.8, 0.8);
@@ -259,7 +245,7 @@ namespace Game3D {
 		}
 		
 		{
-			Ogre::Light* pointLight = mSceneMgr->createLight();
+			Ogre::Light* pointLight = sceneManager_->createLight();
 			pointLight->setType(Ogre::Light::LT_POINT);
 			pointLight->setPosition(Ogre::Vector3(-200.0, 200.0, 200.0));
 			pointLight->setDiffuseColour(0.8, 0.8, 0.8);
@@ -267,122 +253,94 @@ namespace Game3D {
 		}
 		
 		{
-			Ogre::Light* pointLight = mSceneMgr->createLight();
+			Ogre::Light* pointLight = sceneManager_->createLight();
 			pointLight->setType(Ogre::Light::LT_POINT);
 			pointLight->setPosition(Ogre::Vector3(0.0, 100.0, 450.0));
 			pointLight->setDiffuseColour(0.8, 0.8, 0.8);
 			pointLight->setSpecularColour(0.9, 0.9, 0.9);
 		}
 		
-		Ogre::Light* directionLight = mSceneMgr->createLight("directional_light");
+		Ogre::Light* directionLight = sceneManager_->createLight("directional_light");
 		directionLight->setType(Ogre::Light::LT_DIRECTIONAL);
 		directionLight->setDiffuseColour(0.5, 0.5, 0.5);
 		directionLight->setSpecularColour(0.7, 0.7, 0.7);
 		directionLight->setDirection(Ogre::Vector3(0, -1, 1));
 		
-		CreateWall(mSceneMgr, "brick_wall", Ogre::Vector3(0.0, 0.0, 0.0), Ogre::Vector3(100.0, 100.0, 0.0));
-		CreateWall(mSceneMgr, "brick_wall", Ogre::Vector3(100.0, 0.0, 0.0), Ogre::Vector3(200.0, 100.0, 0.0));
-		CreateWall(mSceneMgr, "brick_wall", Ogre::Vector3(0.0, 0.0, 100.0), Ogre::Vector3(0.0, 100.0, 0.0));
+		CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(0.0, 0.0, 0.0), Ogre::Vector3(100.0, 100.0, 0.0));
+		CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(100.0, 0.0, 0.0), Ogre::Vector3(200.0, 100.0, 0.0));
+		CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(0.0, 0.0, 100.0), Ogre::Vector3(0.0, 100.0, 0.0));
 		
 		for(int i = -10; i < 0; i++) {
 			for(int j = -10; j < 10; j++) {
-				CreateFloor(mSceneMgr, "mud", Ogre::Vector3(i * 100.0, 0.0, j * 100.0), Ogre::Vector3((i + 1) * 100.0, 0.0, (j + 1) * 100.0));
+				CreateFloor(sceneManager_, "mud", Ogre::Vector3(i * 100.0, 0.0, j * 100.0), Ogre::Vector3((i + 1) * 100.0, 0.0, (j + 1) * 100.0));
 			}
 		}
 		
 		for(int i = 0; i < 10; i++) {
 			for(int j = -10; j < 10; j++) {
-				CreateFloor(mSceneMgr, "concrete_floor", Ogre::Vector3(i * 100.0, 0.0, j * 100.0), Ogre::Vector3((i + 1) * 100.0, 0.0, (j + 1) * 100.0));
+				CreateFloor(sceneManager_, "concrete_floor", Ogre::Vector3(i * 100.0, 0.0, j * 100.0), Ogre::Vector3((i + 1) * 100.0, 0.0, (j + 1) * 100.0));
 			}
 		}
 		
 		for(int i = -10; i < 10; i++) {
-			CreateWall(mSceneMgr, "brick_wall", Ogre::Vector3(i * 100.0, 0.0, -1000.0), Ogre::Vector3((i + 1) * 100.0, 100.0, -1000.0));
+			CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(i * 100.0, 0.0, -1000.0), Ogre::Vector3((i + 1) * 100.0, 100.0, -1000.0));
 		}
 		
 		for(int i = -10; i < 10; i++) {
-			CreateWall(mSceneMgr, "brick_wall", Ogre::Vector3((i + 1) * 100.0, 0.0, 1000.0), Ogre::Vector3(i * 100.0, 100.0, 1000.0));
+			CreateWall(sceneManager_, "brick_wall", Ogre::Vector3((i + 1) * 100.0, 0.0, 1000.0), Ogre::Vector3(i * 100.0, 100.0, 1000.0));
 		}
 		
 		for(int i = -10; i < 10; i++) {
-			CreateWall(mSceneMgr, "brick_wall", Ogre::Vector3(-1000.0, 0.0, (i + 1) * 100.0), Ogre::Vector3(-1000.0, 100.0, i * 100.0));
+			CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(-1000.0, 0.0, (i + 1) * 100.0), Ogre::Vector3(-1000.0, 100.0, i * 100.0));
 		}
 		
 		for(int i = -10; i < 10; i++) {
-			CreateWall(mSceneMgr, "brick_wall", Ogre::Vector3(1000.0, 0.0, i * 100.0), Ogre::Vector3(1000.0, 100.0, (i + 1) * 100.0));
+			CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(1000.0, 0.0, i * 100.0), Ogre::Vector3(1000.0, 100.0, (i + 1) * 100.0));
 		}
 		
 		{
-			Ogre::SceneNode* mSceneNode = mSceneMgr->getRootSceneNode()->createChildSceneNode("ball0");
-			Ogre::Entity* mEntity = mSceneMgr->createEntity(Ogre::SceneManager::PT_SPHERE);
-			mEntity->setMaterialName("concrete_floor");
-			mSceneNode->attachObject(mEntity);
-			mSceneNode->setPosition(Ogre::Vector3(200.0, 25.0, 200.0));
-			mSceneNode->setScale(Ogre::Vector3(0.5, 0.5, 0.5)); // Radius, in theory.
-			mEntity->setCastShadows(true);
+			Ogre::SceneNode* sceneNode_ = sceneManager_->getRootSceneNode()->createChildSceneNode("ball0");
+			Ogre::Entity* entity_ = sceneManager_->createEntity(Ogre::SceneManager::PT_SPHERE);
+			entity_->setMaterialName("concrete_floor");
+			sceneNode_->attachObject(entity_);
+			sceneNode_->setPosition(Ogre::Vector3(200.0, 25.0, 200.0));
+			sceneNode_->setScale(Ogre::Vector3(0.5, 0.5, 0.5)); // Radius, in theory.
+			entity_->setCastShadows(true);
 		}
 		
 		{
-			Ogre::SceneNode* mSceneNode = mSceneMgr->getRootSceneNode()->createChildSceneNode("ball1");
-			Ogre::Entity* mEntity = mSceneMgr->createEntity(Ogre::SceneManager::PT_SPHERE);
-			mEntity->setMaterialName("concrete_floor");
-			mSceneNode->attachObject(mEntity);
-			mSceneNode->setPosition(Ogre::Vector3(200.0, 25.0, 250.0));
-			mSceneNode->setScale(Ogre::Vector3(0.5, 0.5, 0.5)); // Radius, in theory.
-			mEntity->setCastShadows(true);
+			Ogre::SceneNode* sceneNode_ = sceneManager_->getRootSceneNode()->createChildSceneNode("ball1");
+			Ogre::Entity* entity_ = sceneManager_->createEntity(Ogre::SceneManager::PT_SPHERE);
+			entity_->setMaterialName("concrete_floor");
+			sceneNode_->attachObject(entity_);
+			sceneNode_->setPosition(Ogre::Vector3(200.0, 25.0, 250.0));
+			sceneNode_->setScale(Ogre::Vector3(0.5, 0.5, 0.5)); // Radius, in theory.
+			entity_->setCastShadows(true);
 		}
 		
 		{
-			Ogre::SceneNode* mSceneNode = mSceneMgr->getRootSceneNode()->createChildSceneNode("planet");
-			Ogre::Entity* mEntity = mSceneMgr->createEntity(Ogre::SceneManager::PT_SPHERE);
-			mEntity->setMaterialName("concrete_floor");
-			mSceneNode->attachObject(mEntity);
-			mSceneNode->setPosition(Ogre::Vector3(0.0, 5000.0, 0.0));
-			mSceneNode->setScale(Ogre::Vector3(10.0, 10.0, 10.0)); // Radius, in theory.
-			mEntity->setCastShadows(true);
+			Ogre::SceneNode* sceneNode_ = sceneManager_->getRootSceneNode()->createChildSceneNode("planet");
+			Ogre::Entity* entity_ = sceneManager_->createEntity(Ogre::SceneManager::PT_SPHERE);
+			entity_->setMaterialName("concrete_floor");
+			sceneNode_->attachObject(entity_);
+			sceneNode_->setPosition(Ogre::Vector3(0.0, 5000.0, 0.0));
+			sceneNode_->setScale(Ogre::Vector3(10.0, 10.0, 10.0)); // Radius, in theory.
+			entity_->setCastShadows(true);
 		}
 		
-		Ogre::SceneNode* busNode = CreateBus(mSceneMgr, "bus");
+		Ogre::SceneNode* thingNode = sceneManager_->getRootSceneNode()->createChildSceneNode("thing");
+		Ogre::Entity* thingEntity = sceneManager_->createEntity("thing", "Character.mesh");
+		Ogre::AnimationState* animation = thingEntity->getAnimationState("my_animation");
+		animation->setLoop(true);
+		animation->setEnabled(true);
+		
+		thingNode->attachObject(thingEntity);
+		thingNode->setScale(Ogre::Vector3(10.0, 10.0, 10.0));
+		thingNode->translate(0.0, 50.0, -500.0);
+		
+		Ogre::SceneNode* busNode = CreateBus(sceneManager_, "bus");
 		busNode->setScale(Ogre::Vector3(40.0, 40.0, 40.0));
 		busNode->translate(0.0, 0.0, 500.0);
-	}
-	
-	void Application::destroyScene() {}
-	
-	void Application::setupResources() {
-		// Load resource paths from config file.
-		Ogre::ConfigFile cf;
-		cf.load(mResourcePath + "resources.cfg");
-		
-		// Go through all sections & settings in the file.
-		Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
-		
-		Ogre::String secName, typeName, archName;
-		
-		while(seci.hasMoreElements()) {
-			secName = seci.peekNextKey();
-			Ogre::ConfigFile::SettingsMultiMap* settings = seci.getNext();
-			Ogre::ConfigFile::SettingsMultiMap::iterator i;
-			
-			for(i = settings->begin(); i != settings->end(); ++i) {
-				typeName = i->first;
-				archName = i->second;
-#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE
-				// OS X does not set the working directory relative to the app,
-				// In order to make things portable on OS X we need to provide
-				// the loading with it's own bundle path location
-				Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-				    String(macBundlePath() + "/" + archName), typeName, secName);
-#else
-				Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-				    archName, typeName, secName);
-#endif
-			}
-		}
-	}
-	
-	void Application::createResourceListener() {
-	
 	}
 	
 }

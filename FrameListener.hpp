@@ -1,6 +1,8 @@
 #ifndef GAME3D_FRAMELISTENER_HPP
 #define GAME3D_FRAMELISTENER_HPP
 
+#include <boost/shared_ptr.hpp>
+
 #include <Ogre.h>
 #include <OgreStringConverter.h>
 #include <OgreException.h>
@@ -8,11 +10,13 @@
 #define OIS_DYNAMIC_LIB
 #include <OIS/OIS.h>
 
+#include "Camera.hpp"
+
 namespace Game3D {
 
 	class FrameListener: public Ogre::FrameListener, public Ogre::WindowEventListener {
 		public:
-			FrameListener(Ogre::RenderWindow* win, Ogre::Camera* camera, Ogre::SceneManager* sceneManager);
+			FrameListener(Ogre::RenderWindow* win, const boost::shared_ptr<Camera>& camera, Ogre::SceneManager* sceneManager);
 			
 			~FrameListener();
 			
@@ -31,12 +35,9 @@ namespace Game3D {
 			bool frameEnded(const Ogre::FrameEvent& evt);
 			
 		protected:
-			Ogre::Camera* camera_;
 			Ogre::SceneManager* sceneManager_;
-			Ogre::SceneNode* cameraNode_;
-			Ogre::SceneNode* cameraYawNode_;
-			Ogre::SceneNode* cameraPitchNode_;
-			Ogre::SceneNode* cameraRollNode_;
+			
+			boost::shared_ptr<Camera> camera_;
 			
 			Ogre::Vector3 translateVector_;
 			Ogre::Real currentSpeed_;

@@ -45,5 +45,39 @@ namespace Game3D {
 #endif
 	}
 	
+	void loadResources() {
+		// Load resource paths from config file.
+		Ogre::ConfigFile cf;
+		cf.load(getResourcePath() + "resources.cfg");
+		
+		// Go through all sections & settings in the file.
+		Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
+		
+		Ogre::String secName, typeName, archName;
+		
+		while(seci.hasMoreElements()) {
+			secName = seci.peekNextKey();
+			Ogre::ConfigFile::SettingsMultiMap* settings = seci.getNext();
+			Ogre::ConfigFile::SettingsMultiMap::iterator i;
+			
+			for(i = settings->begin(); i != settings->end(); ++i) {
+				typeName = i->first;
+				archName = i->second;
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE
+				// OS X does not set the working directory relative to the app,
+				// In order to make things portable on OS X we need to provide
+				// the loading with it's own bundle path location
+				Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
+				    String(macBundlePath() + "/" + archName), typeName, secName);
+#else
+				Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
+				    archName, typeName, secName);
+#endif
+			}
+		}
+		
+		Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
+	}
+	
 }
 
