@@ -14,19 +14,17 @@
 
 namespace Game3D {
 
-	FrameListener::FrameListener(Ogre::RenderWindow* window, const boost::shared_ptr<Camera>& camera, Ogre::SceneManager* sceneManager) :
-		sceneManager_(sceneManager), camera_(camera),
-		translateVector_(Ogre::Vector3::ZERO), currentSpeed_(0), window_(window),
-		moveScale_(0.0f), rotateScale_(0.0f),
-		moveSpeed_(200), rotateSpeed_(36),
+	FrameListener::FrameListener(Ogre::RenderWindow* window, World& world) :
+		world_(world), window_(window),
 		inputManager_(0), mouse_(0), keyboard_(0) {
 		
 		Ogre::LogManager::getSingletonPtr()->logMessage("*** Initializing OIS ***");
 		OIS::ParamList pl;
-		size_t windowHnd = 0;
-		std::ostringstream windowHndStr;
 		
+		size_t windowHnd = 0;
 		window->getCustomAttribute("WINDOW", &windowHnd);
+		
+		std::ostringstream windowHndStr;
 		windowHndStr << windowHnd;
 		pl.insert(std::make_pair(std::string("WINDOW"), windowHndStr.str()));
 		
@@ -36,16 +34,6 @@ namespace Game3D {
 		
 		keyboard_ = static_cast<OIS::Keyboard*>(inputManager_->createInputObject(OIS::OISKeyboard, bufferedKeys));
 		mouse_ = static_cast<OIS::Mouse*>(inputManager_->createInputObject(OIS::OISMouse, bufferedMouse));
-		
-		windowResized(window_);
-		
-		Ogre::WindowEventUtilities::addWindowEventListener(window_, this);
-	}
-	
-	FrameListener::~FrameListener() {
-		// Remove ourself as a Window listener.
-		Ogre::WindowEventUtilities::removeWindowEventListener(window_, this);
-		windowClosed(window_);
 	}
 	
 	// Adjust mouse clipping area.
@@ -72,59 +60,13 @@ namespace Game3D {
 		}
 	}
 	
-	bool FrameListener::processUnbufferedKeyInput(const Ogre::FrameEvent& evt) {
-		if(keyboard_->isKeyDown(OIS::KC_W)) {
-			translateVector_.z = moveScale_;
-		}
+	bool FrameListener::frameStarted(const Ogre::FrameEvent& evt) {
+		Event event(Event::FRAME_START, evt, *keyboard_, *mouse_);
+		keyboard_->capture();
+		mouse_->capture();
 		
-		if(keyboard_->isKeyDown(OIS::KC_S)) {
-			translateVector_.z = -(moveScale_ * 0.25);
-		}
-		
-		if(keyboard_->isKeyDown(OIS::KC_A)) {
-			translateVector_.x = moveScale_ * 0.5;
-		}
-		
-		if(keyboard_->isKeyDown(OIS::KC_D)) {
-			translateVector_.x = -(moveScale_ * 0.5);
-		}
-		
-		if(keyboard_->isKeyDown(OIS::KC_ESCAPE) || keyboard_->isKeyDown(OIS::KC_Q)) {
-			return false;
-		}
-		
+		world_.onEvent(event);
 		return true;
-	}
-	
-	bool FrameListener::processUnbufferedMouseInput(const Ogre::FrameEvent& evt) {
-		const OIS::MouseState& ms = mouse_->getMouseState();
-		
-		rotX_ = Ogre::Degree(-ms.X.rel * 0.26);
-		rotY_ = Ogre::Degree(-ms.Y.rel * 0.26);
-		
-		return true;
-	}
-	
-	void FrameListener::moveCamera() {
-		camera_->rotate(AngleVector(-rotY_.valueDegrees(), rotX_.valueDegrees(), 0.0));
-		
-		camera_->translate(camera_->getOrientation().yawOrientation * translateVector_);
-		
-		const double maxPitch = 60.0;
-		
-		AngleVector rotation = camera_->getRotation();
-		const double pitch = rotation.pitch;
-		
-		// Limit the pitch.
-		if(fabs(pitch) > maxPitch) {
-			if(pitch > 0.0) {
-				rotation.pitch = maxPitch;
-				camera_->setRotation(rotation);
-			} else {
-				rotation.pitch = -maxPitch;
-				camera_->setRotation(rotation);
-			}
-		}
 	}
 	
 	bool FrameListener::frameRenderingQueued(const Ogre::FrameEvent& evt) {
@@ -135,70 +77,52 @@ namespace Game3D {
 		keyboard_->capture();
 		mouse_->capture();
 		
-		const Ogre::Vector3 lastMotion = translateVector_;
+		assert(!keyboard_->buffered());
 		
-		if(!mouse_->buffered() || !keyboard_->buffered()) {
-			moveScale_ = moveSpeed_ * evt.timeSinceLastFrame;
-			rotateScale_ = rotateSpeed_ * evt.timeSinceLastFrame;
-			
-			rotX_ = 0;
-			rotY_ = 0;
-			translateVector_ = Ogre::Vector3::ZERO;
-		}
-		
-		if(!keyboard_->buffered())
-			if(processUnbufferedKeyInput(evt) == false) {
-				return false;
-			}
-			
-		if(!mouse_->buffered())
-			if(processUnbufferedMouseInput(evt) == false) {
-				return false;
-			}
-			
-		if(translateVector_ == Ogre::Vector3::ZERO) {
-			currentSpeed_ -= evt.timeSinceLastFrame * 0.3;
-			translateVector_ = lastMotion;
-		} else {
-			currentSpeed_ += evt.timeSinceLastFrame;
-			
-		}
-		
-		// Limit speed.
-		if(currentSpeed_ > 1.0) {
-			currentSpeed_ = 1.0;
-		} else if(currentSpeed_ < 0.0) {
-			currentSpeed_ = 0.0;
-		}
-		
-		translateVector_ *= currentSpeed_;
-		
-		
-		if(!mouse_->buffered() || !keyboard_->buffered()) {
-			moveCamera();
+		if(keyboard_->isKeyDown(OIS::KC_ESCAPE) || keyboard_->isKeyDown(OIS::KC_Q)) {
+			return false;
 		}
 		
 		// Advance the animation.
-		sceneManager_->getEntity("thing")->getAnimationState("my_animation")->addTime(evt.timeSinceLastFrame);
+		world_.getSceneManager().getEntity("thing")->getAnimationState("my_animation")->addTime(evt.timeSinceLastFrame);
 		
+		Event event(Event::FRAME_RENDERING, evt, *keyboard_, *mouse_);
+		world_.onEvent(event);
 		return true;
 	}
 	
 	bool FrameListener::frameEnded(const Ogre::FrameEvent& evt) {
-		Ogre::SceneNode* node = sceneManager_->getSceneNode("ball0");
+		Ogre::SceneNode* node = world_.getSceneManager().getSceneNode("ball0");
 		node->roll(Ogre::Degree(1.0));
 		
 		const double PI = 3.141592654;
 		const double radius = 25.0;
 		node->translate(-((1.0 / 360.0) * 2.0 * PI * radius), 0.0, 0.0);
 		
-		Ogre::SceneNode* node1 = sceneManager_->getSceneNode("ball1");
+		Ogre::SceneNode* node1 = world_.getSceneManager().getSceneNode("ball1");
 		node1->pitch(Ogre::Degree(-1.0));
 		
 		node1->translate(0.0, 0.0, -((1.0 / 360.0) * 2.0 * PI * radius));
 		
-		Ogre::SceneNode* busNode = sceneManager_->getSceneNode("bus");
+		Ogre::SceneNode* busNode = world_.getSceneManager().getSceneNode("bus");
 		busNode->translate(-0.1, 0.0, 0.0);
+		
+		/*Ogre::SceneNode * thingNode = world_.getSceneManager().getSceneNode("thing");
+		
+		Ogre::Vector3 cameraPos = camera_->getPosition();
+		Ogre::Vector3 thingPos = thingNode->getPosition();
+		
+		Ogre::Vector3 moveVector = cameraPos - thingPos;
+		moveVector.y = 0.0;
+		moveVector.normalise();
+		
+		thingNode->translate(moveVector * 2.0);*/
+		
+		keyboard_->capture();
+		mouse_->capture();
+		
+		Event event(Event::FRAME_END, evt, *keyboard_, *mouse_);		
+		world_.onEvent(event);
 		return true;
 	}
 	

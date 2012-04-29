@@ -14,7 +14,11 @@
 #include "Application.hpp"
 #include "Camera.hpp"
 #include "FrameListener.hpp"
+#include "Node.hpp"
+#include "Object.hpp"
+#include "Player.hpp"
 #include "Resources.hpp"
+#include "World.hpp"
 
 namespace Game3D {
 
@@ -93,7 +97,13 @@ namespace Game3D {
 	
 	Application::~Application() {
 		if(frameListener_) {
+			Ogre::WindowEventUtilities::removeWindowEventListener(window_, frameListener_);
+			frameListener_->windowClosed(window_);
 			delete frameListener_;
+		}
+		
+		if(world_){
+			delete world_;
 		}
 		
 		if(root_) {
@@ -130,6 +140,8 @@ namespace Game3D {
 		
 		sceneManager_ = root_->createSceneManager(Ogre::ST_EXTERIOR_CLOSE);
 		
+		world_ = new World(*sceneManager_);
+		
 		// Set default mipmap level.
 		Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
 		
@@ -141,7 +153,11 @@ namespace Game3D {
 		cameraInfo.nearClipDistance = 2.0;
 		cameraInfo.initialPosition = Vector(50.0, 50.0, 50.0);
 		
-		boost::shared_ptr<Camera> camera(new Camera(cameraInfo, sceneManager_));
+		NodePtr playerNode = world_->getRootNode()->addChild("player_node");
+		
+		CameraPtr camera(new Camera(cameraInfo, sceneManager_, playerNode));
+		
+		playerNode->object = ObjectPtr(new Player(camera));
 		
 		Ogre::Viewport* vp = window_->addViewport(camera->getCamera());
 		vp->setBackgroundColour(Ogre::ColourValue(0, 0, 0));
@@ -151,8 +167,11 @@ namespace Game3D {
 		// Create the scene
 		createScene();
 		
-		frameListener_ = new FrameListener(window_, camera, sceneManager_);
+		frameListener_ = new FrameListener(window_, *world_);
 		root_->addFrameListener(frameListener_);
+		frameListener_->windowResized(window_);
+		
+		Ogre::WindowEventUtilities::addWindowEventListener(window_, frameListener_);
 		
 		return true;
 		

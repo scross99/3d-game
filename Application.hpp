@@ -3,6 +3,7 @@
 
 #include <Ogre.h>
 #include "FrameListener.hpp"
+#include "World.hpp"
 
 namespace Game3D {
 
@@ -24,6 +25,7 @@ namespace Game3D {
 			Ogre::SceneManager* sceneManager_;
 			FrameListener* frameListener_;
 			Ogre::RenderWindow* window_;
+			World * world_;
 			
 	};
 	

@@ -5,6 +5,7 @@
 
 #include <Ogre.h>
 
+#include "Node.hpp"
 #include "Vector.hpp"
 
 namespace Game3D{
@@ -12,18 +13,16 @@ namespace Game3D{
 	struct CameraInfo{
 		std::string name;
 		double nearClipDistance, farClipDistance;
-		Vector initialPosition;
+		Ogre::Vector3 initialPosition;
 		double initialPitch, initialYaw, initialRoll;
 		double aspectRatio;
-		Ogre::SceneNode * parentNode;
 		
 		inline CameraInfo()
 			: name("camera"),
 			nearClipDistance(0), farClipDistance(1000.0),
 			initialPosition(0.0, 0.0, 0.0),
 			initialPitch(0.0), initialYaw(0.0), initialRoll(0.0),
-			aspectRatio(16.0/9.0),
-			parentNode(0){ }
+			aspectRatio(16.0/9.0){ }
 	};
 	
 	struct AngleVector{
@@ -46,11 +45,13 @@ namespace Game3D{
 	
 	class Camera{
 		public:
-			Camera(const CameraInfo& info, Ogre::SceneManager * sceneManager);
+			Camera(const CameraInfo& info, Ogre::SceneManager * sceneManager, NodePtr node);
 			
 			Ogre::Camera * getCamera();
 			
 			void setAspectRatio(double aspectRatio);
+			
+			Ogre::Vector3 getPosition() const;
 			
 			void rotate(const AngleVector& angles);
 			
@@ -71,6 +72,8 @@ namespace Game3D{
 			Ogre::SceneNode* cameraRollNode_;
 		
 	};
+	
+	typedef boost::shared_ptr<Camera> CameraPtr;
 
 }
 

@@ -2,7 +2,7 @@
 
 namespace Game3D{
 
-	Camera::Camera(const CameraInfo& info, Ogre::SceneManager * sceneManager)
+	Camera::Camera(const CameraInfo& info, Ogre::SceneManager * sceneManager, NodePtr node)
 		: sceneManager_(sceneManager){
 		
 		camera_ = sceneManager_->createCamera(info.name);
@@ -11,9 +11,7 @@ namespace Game3D{
 		camera_->setNearClipDistance(info.nearClipDistance);
 		camera_->setFarClipDistance(info.farClipDistance);
 		
-		Ogre::SceneNode * parentNode = (info.parentNode == 0) ? sceneManager_->getRootSceneNode() : info.parentNode;
-		
-		cameraNode_ = parentNode->createChildSceneNode();
+		cameraNode_ = node->sceneNode.createChildSceneNode();
 		cameraNode_->setPosition(info.initialPosition);
 		
 		cameraYawNode_ = cameraNode_->createChildSceneNode();
@@ -43,6 +41,10 @@ namespace Game3D{
 		cameraYawNode_->resetOrientation();
 		cameraRollNode_->resetOrientation();
 		rotate(angles);
+	}
+	
+	Ogre::Vector3 Camera::getPosition() const{
+		return cameraNode_->getPosition();
 	}
 			
 	AngleVector Camera::getRotation() const{
