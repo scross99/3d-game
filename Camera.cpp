@@ -11,7 +11,7 @@ namespace Game3D{
 		camera_->setNearClipDistance(info.nearClipDistance);
 		camera_->setFarClipDistance(info.farClipDistance);
 		
-		cameraNode_ = node->sceneNode.createChildSceneNode();
+		cameraNode_ = node->getSceneNode().createChildSceneNode();
 		cameraNode_->setPosition(info.initialPosition);
 		
 		cameraYawNode_ = cameraNode_->createChildSceneNode();

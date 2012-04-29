@@ -92,17 +92,18 @@ namespace Game3D {
 	}
 	
 	bool FrameListener::frameEnded(const Ogre::FrameEvent& evt) {
-		Ogre::SceneNode* node = world_.getSceneManager().getSceneNode("ball0");
-		node->roll(Ogre::Degree(1.0));
-		
 		const double PI = 3.141592654;
 		const double radius = 25.0;
-		node->translate(-((1.0 / 360.0) * 2.0 * PI * radius), 0.0, 0.0);
 		
-		Ogre::SceneNode* node1 = world_.getSceneManager().getSceneNode("ball1");
+		/*Ogre::SceneNode* node = world_.getSceneManager().getSceneNode("ball0");
+		node->roll(Ogre::Degree(1.0));
+		
+		node->translate(-((1.0 / 360.0) * 2.0 * PI * radius), 0.0, 0.0);*/
+		
+		/*Ogre::SceneNode* node1 = world_.getSceneManager().getSceneNode("ball1");
 		node1->pitch(Ogre::Degree(-1.0));
 		
-		node1->translate(0.0, 0.0, -((1.0 / 360.0) * 2.0 * PI * radius));
+		node1->translate(0.0, 0.0, -((1.0 / 360.0) * 2.0 * PI * radius));*/
 		
 		Ogre::SceneNode* busNode = world_.getSceneManager().getSceneNode("bus");
 		busNode->translate(-0.1, 0.0, 0.0);

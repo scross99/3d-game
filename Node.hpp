@@ -9,54 +9,75 @@
 #include <Ogre.h>
 #include "Object.hpp"
 
-namespace Game3D{
+namespace Game3D {
 
 	struct Node;
 	typedef boost::shared_ptr<Node> NodePtr;
 	
-	struct Node{
-		ObjectPtr object;
-		Ogre::SceneNode& sceneNode;
-		std::map<std::string, NodePtr> children;
-		
-		inline Node(ObjectPtr o, Ogre::SceneNode& s)
-			: object(o), sceneNode(s){ }
+	class Node {
+		private:
+			ObjectPtr object_;
+			Ogre::SceneNode* sceneNode_;
+			std::map<std::string, NodePtr> children_;
 			
-		inline NodePtr addChild(const std::string& name){
-			typedef std::map<std::string, NodePtr>::iterator ItType;
-			NodePtr newNode(new Node(ObjectPtr(), *(sceneNode.createChildSceneNode())));
-			std::size_t i = 0;
-			std::string childName(name);
+		public:
+			inline Node() { }
 			
-			while(true){
-				std::pair<ItType, bool> result = children.insert(std::make_pair(childName, newNode));
-				if(result.second){
-					return newNode;
+			inline Node(ObjectPtr object, Ogre::SceneNode& sceneNode)
+				: object_(object), sceneNode_(&sceneNode) { }
+				
+			inline NodePtr createChild(const std::string& name) {
+				NodePtr newNode(new Node(ObjectPtr(), *(sceneNode_->createChildSceneNode())));
+				attachChild(name, newNode);
+				return newNode;
+			}
+			
+			inline void attachChild(const std::string& name, const NodePtr& node) {
+				typedef std::map<std::string, NodePtr>::iterator ItType;
+				std::size_t i = 0;
+				std::string childName(name);
+				
+				while(true) {
+					std::pair<ItType, bool> result = children_.insert(std::make_pair(childName, node));
+					
+					if(result.second) {
+						return;
+					}
+					
+					std::ostringstream stream;
+					stream << name << (i++);
+					childName = stream.str();
+				}
+			}
+			
+			inline NodePtr getChild(const std::string& name) {
+				typedef std::map<std::string, NodePtr>::iterator ItType;
+				ItType it = children_.find(name);
+				assert(it != children_.end());
+				return it->second;
+			}
+			
+			inline Ogre::SceneNode& getSceneNode() {
+				return *sceneNode_;
+			}
+			
+			inline void setObject(ObjectPtr object) {
+				object_ = object;
+			}
+			
+			inline void onEvent(Event& event) {
+				if(object_) {
+					object_->onEvent(*this, event);
 				}
 				
-				std::ostringstream stream;
-				stream << name << (i++);
-				childName = stream.str();
+				typedef std::map<std::string, NodePtr>::iterator ItType;
+				
+				for(ItType it = children_.begin(); it != children_.end(); ++it) {
+					it->second->onEvent(event);
+				}
 			}
-		}
-		
-		inline NodePtr getChild(const std::string& name){
-			typedef std::map<std::string, NodePtr>::iterator ItType;
-			ItType it = children.find(name);
-			assert(it != children.end());
-			return it->second;
-		}
-		
-		inline void onEvent(Event& event){
-			if(object) object->onEvent(*this, event);
-			
-			typedef std::map<std::string, NodePtr>::iterator ItType;
-			for(ItType it = children.begin(); it != children.end(); ++it){
-				it->second->onEvent(event);
-			}
-		}
 	};
-
+	
 }
 
 #endif

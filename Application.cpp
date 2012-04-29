@@ -153,11 +153,11 @@ namespace Game3D {
 		cameraInfo.nearClipDistance = 2.0;
 		cameraInfo.initialPosition = Vector(50.0, 50.0, 50.0);
 		
-		NodePtr playerNode = world_->getRootNode()->addChild("player_node");
+		NodePtr playerNode = world_->getRootNode()->createChild("player_node");
 		
 		CameraPtr camera(new Camera(cameraInfo, sceneManager_, playerNode));
 		
-		playerNode->object = ObjectPtr(new Player(camera));
+		playerNode->setObject(ObjectPtr(new Player(camera)));
 		
 		Ogre::Viewport* vp = window_->addViewport(camera->getCamera());
 		vp->setBackgroundColour(Ogre::ColourValue(0, 0, 0));
@@ -174,8 +174,27 @@ namespace Game3D {
 		Ogre::WindowEventUtilities::addWindowEventListener(window_, frameListener_);
 		
 		return true;
-		
 	}
+	
+	class BallObject: public Object{
+		public:
+			inline void onEvent(Node& node, Event& event){
+				switch(event.type){
+					case Event::FRAME_END: {
+						Ogre::SceneNode& sceneNode = node.getSceneNode();
+						sceneNode.roll(Ogre::Degree(1.0));
+						const double PI = 3.141592654;
+						const double radius = 25.0;
+						sceneNode.translate(-((1.0 / 360.0) * 2.0 * PI * radius), 0.0, 0.0);
+						break;
+					}
+					default: {
+						break;
+					}
+				}
+			}
+		
+	};
 	
 	void Application::createScene() {
 		{
@@ -318,23 +337,35 @@ namespace Game3D {
 		}
 		
 		{
-			Ogre::SceneNode* sceneNode_ = sceneManager_->getRootSceneNode()->createChildSceneNode("ball0");
-			Ogre::Entity* entity_ = sceneManager_->createEntity(Ogre::SceneManager::PT_SPHERE);
-			entity_->setMaterialName("concrete_floor");
-			sceneNode_->attachObject(entity_);
-			sceneNode_->setPosition(Ogre::Vector3(200.0, 25.0, 200.0));
-			sceneNode_->setScale(Ogre::Vector3(0.5, 0.5, 0.5)); // Radius, in theory.
-			entity_->setCastShadows(true);
+			Ogre::Entity* entity = sceneManager_->createEntity(Ogre::SceneManager::PT_SPHERE);
+			entity->setMaterialName("concrete_floor");
+			entity->setCastShadows(true);
+			
+			NodePtr ballParentNode = world_->getRootNode()->createChild("ball_parent");
+			ballParentNode->getSceneNode().setPosition(Ogre::Vector3(200.0, 25.0, 200.0));
+			ballParentNode->getSceneNode().yaw(Ogre::Degree(-90.0));
+			
+			NodePtr ballNode = ballParentNode->createChild("ball");
+			ballNode->setObject(ObjectPtr(new BallObject()));
+			
+			ballNode->getSceneNode().attachObject(entity);
+			ballNode->getSceneNode().setScale(Ogre::Vector3(0.5, 0.5, 0.5)); // Radius, in theory.
 		}
 		
 		{
-			Ogre::SceneNode* sceneNode_ = sceneManager_->getRootSceneNode()->createChildSceneNode("ball1");
-			Ogre::Entity* entity_ = sceneManager_->createEntity(Ogre::SceneManager::PT_SPHERE);
-			entity_->setMaterialName("concrete_floor");
-			sceneNode_->attachObject(entity_);
-			sceneNode_->setPosition(Ogre::Vector3(200.0, 25.0, 250.0));
-			sceneNode_->setScale(Ogre::Vector3(0.5, 0.5, 0.5)); // Radius, in theory.
-			entity_->setCastShadows(true);
+			Ogre::Entity* entity = sceneManager_->createEntity(Ogre::SceneManager::PT_SPHERE);
+			entity->setMaterialName("concrete_floor");
+			entity->setCastShadows(true);
+			
+			NodePtr ballParentNode = world_->getRootNode()->createChild("ball_parent");
+			ballParentNode->getSceneNode().setPosition(Ogre::Vector3(200.0, 25.0, 200.0));
+			ballParentNode->getSceneNode().yaw(Ogre::Degree(90.0));
+			
+			NodePtr ballNode = ballParentNode->createChild("ball");
+			ballNode->setObject(ObjectPtr(new BallObject()));
+			
+			ballNode->getSceneNode().attachObject(entity);
+			ballNode->getSceneNode().setScale(Ogre::Vector3(0.5, 0.5, 0.5)); // Radius, in theory.
 		}
 		
 		{
