@@ -121,13 +121,8 @@ namespace Game3D {
 				
 				// Limit the pitch.
 				if(fabs(pitch) > maxPitch) {
-					if(pitch > 0.0) {
-						rotation.pitch = maxPitch;
-						camera_->setRotation(rotation);
-					} else {
-						rotation.pitch = -maxPitch;
-						camera_->setRotation(rotation);
-					}
+					rotation.pitch = (pitch > 0.0) ? maxPitch : -maxPitch;
+					camera_->setRotation(rotation);
 				}
 			}
 			

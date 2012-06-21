@@ -91,33 +91,9 @@ namespace Game3D {
 		return true;
 	}
 	
-	bool FrameListener::frameEnded(const Ogre::FrameEvent& evt) {
-		const double PI = 3.141592654;
-		const double radius = 25.0;
-		
-		/*Ogre::SceneNode* node = world_.getSceneManager().getSceneNode("ball0");
-		node->roll(Ogre::Degree(1.0));
-		
-		node->translate(-((1.0 / 360.0) * 2.0 * PI * radius), 0.0, 0.0);*/
-		
-		/*Ogre::SceneNode* node1 = world_.getSceneManager().getSceneNode("ball1");
-		node1->pitch(Ogre::Degree(-1.0));
-		
-		node1->translate(0.0, 0.0, -((1.0 / 360.0) * 2.0 * PI * radius));*/
-		
+	bool FrameListener::frameEnded(const Ogre::FrameEvent& evt) {		
 		Ogre::SceneNode* busNode = world_.getSceneManager().getSceneNode("bus");
 		busNode->translate(-0.1, 0.0, 0.0);
-		
-		/*Ogre::SceneNode * thingNode = world_.getSceneManager().getSceneNode("thing");
-		
-		Ogre::Vector3 cameraPos = camera_->getPosition();
-		Ogre::Vector3 thingPos = thingNode->getPosition();
-		
-		Ogre::Vector3 moveVector = cameraPos - thingPos;
-		moveVector.y = 0.0;
-		moveVector.normalise();
-		
-		thingNode->translate(moveVector * 2.0);*/
 		
 		keyboard_->capture();
 		mouse_->capture();

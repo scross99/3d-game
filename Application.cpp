@@ -49,6 +49,19 @@ namespace Game3D {
 		return entityNode;
 	}
 	
+	Ogre::SceneNode* CreateCeiling(Ogre::SceneManager* sceneManager, const std::string& materialName, Ogre::Vector3 p0, Ogre::Vector3 p1) {
+		Ogre::Entity* entity = sceneManager->createEntity("floor");
+		Ogre::SceneNode* entityNode = sceneManager->getRootSceneNode()->createChildSceneNode();
+		entityNode->attachObject(entity);
+		entity->setMaterialName(materialName);
+		entity->setCastShadows(false);
+		//entityNode->lookAt(Ogre::Vector3(0.0, -1.0, 0.0), Ogre::SceneNode::TS_LOCAL, Ogre::Vector3::UNIT_Y);
+		entityNode->pitch(Ogre::Degree(180.0));
+		entityNode->translate(p0.x, p0.y, p0.z);
+		entityNode->setScale(fabs(p1.x - p0.x), 1.0, fabs(p1.z - p0.z));
+		return entityNode;
+	}
+	
 	Ogre::SceneNode* AttachMesh(Ogre::SceneManager* sceneManager, Ogre::SceneNode* node, const std::string& parentName, const std::string& meshName) {
 		Ogre::SceneNode* childNode = node->createChildSceneNode(parentName + "_" + meshName);
 		childNode->attachObject(sceneManager->createEntity(meshName));
@@ -263,13 +276,13 @@ namespace Game3D {
 			manual->convertToMesh("floor");
 		}
 		
-		sceneManager_->setAmbientLight(Ogre::ColourValue(0, 0, 0));
+		sceneManager_->setAmbientLight(Ogre::ColourValue(0.1, 0.1, 0.1));
 		sceneManager_->setShadowTechnique(Ogre::SHADOWTYPE_STENCIL_ADDITIVE);
 		
 		{
 			Ogre::Light* pointLight = sceneManager_->createLight();
 			pointLight->setType(Ogre::Light::LT_POINT);
-			pointLight->setPosition(Ogre::Vector3(200.0, 100.0, 200.0));
+			pointLight->setPosition(Ogre::Vector3(200.0, 90.0, 200.0));
 			pointLight->setDiffuseColour(0.8, 0.8, 0.8);
 			pointLight->setSpecularColour(0.9, 0.9, 0.9);
 		}
@@ -277,7 +290,7 @@ namespace Game3D {
 		{
 			Ogre::Light* pointLight = sceneManager_->createLight();
 			pointLight->setType(Ogre::Light::LT_POINT);
-			pointLight->setPosition(Ogre::Vector3(-200.0, 100.0, -200.0));
+			pointLight->setPosition(Ogre::Vector3(-200.0, 90.0, -200.0));
 			pointLight->setDiffuseColour(0.8, 0.8, 0.8);
 			pointLight->setSpecularColour(0.9, 0.9, 0.9);
 		}
@@ -285,7 +298,7 @@ namespace Game3D {
 		{
 			Ogre::Light* pointLight = sceneManager_->createLight();
 			pointLight->setType(Ogre::Light::LT_POINT);
-			pointLight->setPosition(Ogre::Vector3(-200.0, 200.0, 200.0));
+			pointLight->setPosition(Ogre::Vector3(-200.0, 90.0, 200.0));
 			pointLight->setDiffuseColour(0.8, 0.8, 0.8);
 			pointLight->setSpecularColour(0.9, 0.9, 0.9);
 		}
@@ -293,7 +306,7 @@ namespace Game3D {
 		{
 			Ogre::Light* pointLight = sceneManager_->createLight();
 			pointLight->setType(Ogre::Light::LT_POINT);
-			pointLight->setPosition(Ogre::Vector3(0.0, 100.0, 450.0));
+			pointLight->setPosition(Ogre::Vector3(0.0, 90.0, 450.0));
 			pointLight->setDiffuseColour(0.8, 0.8, 0.8);
 			pointLight->setSpecularColour(0.9, 0.9, 0.9);
 		}
@@ -304,41 +317,43 @@ namespace Game3D {
 		directionLight->setSpecularColour(0.7, 0.7, 0.7);
 		directionLight->setDirection(Ogre::Vector3(0, -1, 1));
 		
-		CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(0.0, 0.0, 0.0), Ogre::Vector3(100.0, 100.0, 0.0));
-		CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(100.0, 0.0, 0.0), Ogre::Vector3(200.0, 100.0, 0.0));
-		CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(0.0, 0.0, 100.0), Ogre::Vector3(0.0, 100.0, 0.0));
+		for(int i = -10; i < 10; i++) {
+			for(int j = -10; j < 10; j++) {
+				CreateCeiling(sceneManager_, "ceiling", Ogre::Vector3(i * 100.0, 100.0, j * 100.0), Ogre::Vector3((i + 1) * 100.0, 100.0, (j + 1) * 100.0));
+			}
+		}
 		
 		for(int i = -10; i < 0; i++) {
 			for(int j = -10; j < 10; j++) {
-				CreateFloor(sceneManager_, "mud", Ogre::Vector3(i * 100.0, 0.0, j * 100.0), Ogre::Vector3((i + 1) * 100.0, 0.0, (j + 1) * 100.0));
+				CreateFloor(sceneManager_, "ceiling", Ogre::Vector3(i * 100.0, 0.0, j * 100.0), Ogre::Vector3((i + 1) * 100.0, 0.0, (j + 1) * 100.0));
 			}
 		}
 		
 		for(int i = 0; i < 10; i++) {
 			for(int j = -10; j < 10; j++) {
-				CreateFloor(sceneManager_, "concrete_floor", Ogre::Vector3(i * 100.0, 0.0, j * 100.0), Ogre::Vector3((i + 1) * 100.0, 0.0, (j + 1) * 100.0));
+				CreateFloor(sceneManager_, "ceiling", Ogre::Vector3(i * 100.0, 0.0, j * 100.0), Ogre::Vector3((i + 1) * 100.0, 0.0, (j + 1) * 100.0));
 			}
 		}
 		
 		for(int i = -10; i < 10; i++) {
-			CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(i * 100.0, 0.0, -1000.0), Ogre::Vector3((i + 1) * 100.0, 100.0, -1000.0));
+			CreateWall(sceneManager_, "ceiling", Ogre::Vector3(i * 100.0, 0.0, -1000.0), Ogre::Vector3((i + 1) * 100.0, 100.0, -1000.0));
 		}
 		
 		for(int i = -10; i < 10; i++) {
-			CreateWall(sceneManager_, "brick_wall", Ogre::Vector3((i + 1) * 100.0, 0.0, 1000.0), Ogre::Vector3(i * 100.0, 100.0, 1000.0));
+			CreateWall(sceneManager_, "ceiling", Ogre::Vector3((i + 1) * 100.0, 0.0, 1000.0), Ogre::Vector3(i * 100.0, 100.0, 1000.0));
 		}
 		
 		for(int i = -10; i < 10; i++) {
-			CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(-1000.0, 0.0, (i + 1) * 100.0), Ogre::Vector3(-1000.0, 100.0, i * 100.0));
+			CreateWall(sceneManager_, "ceiling", Ogre::Vector3(-1000.0, 0.0, (i + 1) * 100.0), Ogre::Vector3(-1000.0, 100.0, i * 100.0));
 		}
 		
 		for(int i = -10; i < 10; i++) {
-			CreateWall(sceneManager_, "brick_wall", Ogre::Vector3(1000.0, 0.0, i * 100.0), Ogre::Vector3(1000.0, 100.0, (i + 1) * 100.0));
+			CreateWall(sceneManager_, "ceiling", Ogre::Vector3(1000.0, 0.0, i * 100.0), Ogre::Vector3(1000.0, 100.0, (i + 1) * 100.0));
 		}
 		
 		{
 			Ogre::Entity* entity = sceneManager_->createEntity(Ogre::SceneManager::PT_SPHERE);
-			entity->setMaterialName("concrete_floor");
+			entity->setMaterialName("ceiling");
 			entity->setCastShadows(true);
 			
 			NodePtr ballParentNode = world_->getRootNode()->createChild("ball_parent");
@@ -354,7 +369,7 @@ namespace Game3D {
 		
 		{
 			Ogre::Entity* entity = sceneManager_->createEntity(Ogre::SceneManager::PT_SPHERE);
-			entity->setMaterialName("concrete_floor");
+			entity->setMaterialName("ceiling");
 			entity->setCastShadows(true);
 			
 			NodePtr ballParentNode = world_->getRootNode()->createChild("ball_parent");
@@ -371,7 +386,7 @@ namespace Game3D {
 		{
 			Ogre::SceneNode* sceneNode_ = sceneManager_->getRootSceneNode()->createChildSceneNode("planet");
 			Ogre::Entity* entity_ = sceneManager_->createEntity(Ogre::SceneManager::PT_SPHERE);
-			entity_->setMaterialName("concrete_floor");
+			entity_->setMaterialName("ceiling");
 			sceneNode_->attachObject(entity_);
 			sceneNode_->setPosition(Ogre::Vector3(0.0, 5000.0, 0.0));
 			sceneNode_->setScale(Ogre::Vector3(10.0, 10.0, 10.0)); // Radius, in theory.

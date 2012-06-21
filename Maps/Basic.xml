@@ -1,8 +1,7 @@
 <map name="Basic">
-	<floor width="100" height="100">
-		<area>
-			<from x="0" y="0" />
-			<to x="20" y="1" />
-		</area>
+	<floor>
+		<room name="room1" width="100" height="100">
+		
+		</room>
 	</floor>
 </map>
