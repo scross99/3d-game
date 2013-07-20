@@ -84,15 +84,17 @@ namespace Game3D {
 				continue;
 			}
 			
+			const std::string filenameString = i->path().filename().generic_string();
+			
 			boost::smatch what;
 			
 			// Skip if no match.
-			if(!boost::regex_match(i->leaf(), what, filter)) {
+			if(!boost::regex_match(filenameString, what, filter)) {
 				continue;
 			}
 			
 			// File matches.
-			AttachMesh(sceneManager, busNode, name, i->leaf());
+			AttachMesh(sceneManager, busNode, name, filenameString);
 		}
 		
 		busNode->roll(Ogre::Degree(79.6));
